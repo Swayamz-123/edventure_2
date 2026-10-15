@@ -103,8 +103,22 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/admin" element={<AdminAnalytics />} />
-          <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminAnalytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/analytics"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminAnalytics />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
         <Chatbot />
       </AuthProvider>

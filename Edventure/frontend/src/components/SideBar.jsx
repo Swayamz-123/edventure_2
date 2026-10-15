@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   LayoutDashboard, 
   Users, 
@@ -19,6 +20,8 @@ import {
 function Sidebar({ onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -35,7 +38,7 @@ function Sidebar({ onLogout }) {
     { name: 'Rewards Shop', path: '/rewards', icon: Trophy },
     { name: 'Leaderboard', path: '/leaderboard', icon: BarChart3 },
     { name: 'PDF to Quiz', path: '/pdf-quiz', icon: FileText },
-    { name: 'System Analytics', path: '/admin', icon: Activity },
+    ...(isAdmin ? [{ name: 'System Analytics', path: '/admin', icon: Activity }] : []),
   ];
 
   const secondaryItems = [
