@@ -47,6 +47,15 @@ export const removeFile = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'Public ID is required to delete a file'));
   }
 
+  // Authorization check: Verify user owns the document associated with this asset (unless admin)
+  if (req.user?.role !== 'admin') {
+    const CourseDocument = (await import('../models/CourseDocument.js')).default;
+    const doc = await CourseDocument.findOne({ cloudinaryPublicId: publicId });
+    if (doc && doc.uploadedBy && doc.uploadedBy.toString() !== req.user._id.toString()) {
+      return next(new ApiError(403, 'Forbidden: You do not own the file associated with this public ID'));
+    }
+  }
+
   const result = await deleteFromCloudinary(publicId, resourceType);
 
   return res.json(

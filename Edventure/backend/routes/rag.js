@@ -15,11 +15,11 @@ const router = express.Router();
 router.post('/upload', verifyJWT, upload.single('file'), uploadCourseDocument);
 
 // Ask Syllabus Copilot question (Grounded RAG retrieval)
-router.post('/ask', askSyllabusCopilot);
+router.post('/ask', verifyJWT, askSyllabusCopilot);
 
 // Browse uploaded course documents
-router.get('/documents', getCourseDocuments);
-router.get('/documents/:id', getCourseDocumentById);
+router.get('/documents', verifyJWT, getCourseDocuments);
+router.get('/documents/:id', verifyJWT, getCourseDocumentById);
 
 // Generate grounded quiz from document
 router.post('/documents/:id/quiz', verifyJWT, generateDocumentQuiz);

@@ -50,13 +50,29 @@ export const purchaseItem = asyncHandler(async (req, res, next) => {
     return next(new ApiError(404, `Item "${itemId}" not found in shop catalog`));
   }
 
-  const user = await User.findById(req.user._id);
+  const inventoryField = type === 'title' ? 'unlockedTitles' : 'unlockedAvatars';
 
-  try {
-    user.purchaseItem(type, itemId, itemDef.cost);
-    await user.save();
-  } catch (err) {
-    return next(new ApiError(400, err.message));
+  // Atomic conditional update: Guarantees concurrency safety & prevents double-spending
+  const updatedUser = await User.findOneAndUpdate(
+    {
+      _id: req.user._id,
+      points: { $gte: itemDef.cost },
+      [inventoryField]: { $ne: itemId }
+    },
+    {
+      $inc: { points: -itemDef.cost },
+      $addToSet: { [inventoryField]: itemId }
+    },
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    // Check if user already owns it or has insufficient points
+    const currentUser = await User.findById(req.user._id);
+    if (currentUser?.[inventoryField]?.includes(itemId)) {
+      return next(new ApiError(400, 'You already own this item'));
+    }
+    return next(new ApiError(400, `Insufficient points: Requires ${itemDef.cost} XP, you have ${currentUser?.points || 0} XP`));
   }
 
   return res.json(
@@ -64,9 +80,9 @@ export const purchaseItem = asyncHandler(async (req, res, next) => {
       200,
       {
         purchasedItem: itemDef,
-        pointsRemaining: user.points,
-        unlockedTitles: user.unlockedTitles,
-        unlockedAvatars: user.unlockedAvatars
+        pointsRemaining: updatedUser.points,
+        unlockedTitles: updatedUser.unlockedTitles,
+        unlockedAvatars: updatedUser.unlockedAvatars
       },
       `Successfully purchased ${itemDef.name}!`
     )

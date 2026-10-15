@@ -199,6 +199,10 @@ function BattlegroundsGame() {
         }
       };
 
+      if (data.questions && Array.isArray(data.questions)) {
+        setQuestions(data.questions);
+      }
+
       setFinalResults(normalized);
       setGameState('finished');
 
@@ -213,8 +217,6 @@ function BattlegroundsGame() {
           myFinalAnswers = normalized.answers?.[myKey] ?? normalized.answers?.[user?.username] ?? [];
         }
 
-        console.log('🧭 Debug: resolved myFinalAnswers length:', myFinalAnswers?.length, 'for user:', user?.username, 'normalized keys:', Object.keys(normalized.answers || {}));
-
         if (Array.isArray(myFinalAnswers) && myFinalAnswers.length > 0) {
           const updatedLocalAnswers = myFinalAnswers.map((a, idx) => ({
             questionId: a.questionId ?? a.id ?? null,
@@ -226,20 +228,6 @@ function BattlegroundsGame() {
         }
       } catch (e) {
         console.error('❌ Error updating local answers from final results:', e);
-      }
-
-      try {
-        if (user) {
-          const playerScore = normalized.player1.username === user.username ? Number(normalized.player1.score ?? normalized.player1.points ?? 0) : Number(normalized.player2.score ?? normalized.player2.points ?? 0);
-          if (!isNaN(playerScore)) {
-            await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/update_points`, {
-              points: playerScore
-            }, { withCredentials: true });
-            console.log('💰 Updated user points after multiplayer game:', playerScore);
-          }
-        }
-      } catch (err) {
-        console.error('❌ Error updating points after multiplayer game:', err);
       }
     });
 

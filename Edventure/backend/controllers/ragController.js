@@ -173,6 +173,10 @@ export const getCourseDocuments = asyncHandler(async (req, res) => {
   const { subject, classLevel } = req.query;
 
   const filter = {};
+  // Restrict to user's uploaded documents (or all if admin)
+  if (req.user && req.user.role !== 'admin') {
+    filter.uploadedBy = req.user._id;
+  }
   if (subject) filter.subject = subject.toLowerCase().trim();
   if (classLevel) filter.classLevel = parseInt(classLevel, 10);
 
@@ -197,6 +201,14 @@ export const getCourseDocumentById = asyncHandler(async (req, res, next) => {
     return next(new ApiError(404, 'Course document not found'));
   }
 
+  // Authorization check: User must own the document or be admin
+  if (doc.uploadedBy && req.user && req.user.role !== 'admin') {
+    const ownerId = doc.uploadedBy._id ? doc.uploadedBy._id.toString() : doc.uploadedBy.toString();
+    if (ownerId !== req.user._id.toString()) {
+      return next(new ApiError(403, 'Forbidden: You do not have permission to access this document'));
+    }
+  }
+
   const sampleChunks = await DocumentChunk.find({ documentId: id })
     .select('chunkIndex text pageNumber')
     .limit(5)
@@ -216,6 +228,14 @@ export const generateDocumentQuiz = asyncHandler(async (req, res, next) => {
   const doc = await CourseDocument.findById(id).lean();
   if (!doc) {
     return next(new ApiError(404, 'Course document not found'));
+  }
+
+  // Authorization check: User must own the document or be admin
+  if (doc.uploadedBy && req.user && req.user.role !== 'admin') {
+    const ownerId = doc.uploadedBy._id ? doc.uploadedBy._id.toString() : doc.uploadedBy.toString();
+    if (ownerId !== req.user._id.toString()) {
+      return next(new ApiError(403, 'Forbidden: You do not have permission to generate quizzes from this document'));
+    }
   }
 
   const chunks = await DocumentChunk.find({ documentId: id }).limit(10).lean();

@@ -68,8 +68,19 @@ export default function registerGameHandlers(io, generateQuestions, User, redis)
         return;
       }
 
-      const { userId, username, subject, difficulty, classLevel, mode } = data;
-      socket.userData = { userId, username, subject, difficulty, classLevel, mode };
+      // Enforce server-side verified identity from cryptographic JWT
+      const verifiedUserId = decoded._id.toString();
+      const verifiedUsername = decoded.username || decoded.name || data.username || 'Hero';
+
+      const { subject, difficulty, classLevel, mode } = data;
+      socket.userData = {
+        userId: verifiedUserId,
+        username: verifiedUsername,
+        subject,
+        difficulty,
+        classLevel,
+        mode
+      };
 
       const roomKey = `${subject}-${difficulty}-${classLevel}-${mode}`.toLowerCase();
       const lobbyQueueKey = `lobby:queue:${roomKey}`;
@@ -77,9 +88,9 @@ export default function registerGameHandlers(io, generateQuestions, User, redis)
 
       try {
         // Prevent duplicate queue joins using a Redis Set
-        const alreadyInLobby = await redis.sismember(lobbyUsersKey, userId);
+        const alreadyInLobby = await redis.sismember(lobbyUsersKey, verifiedUserId);
         if (alreadyInLobby) {
-          console.log(`⚠️ User ${username} already queued in lobby ${roomKey}`);
+          console.log(`⚠️ User ${verifiedUsername} already queued in lobby ${roomKey}`);
           socket.emit('already-in-room', { roomKey });
           return;
         }
@@ -450,8 +461,13 @@ export default function registerGameHandlers(io, generateQuestions, User, redis)
             winner: s1 > s2 ? p1.userData.username : s1 < s2 ? p2.userData.username : 'tie'
           };
 
+          const finalPayload = {
+            ...finalScores,
+            questions: game.questions || []
+          };
+
           game.players.forEach((player) => {
-            io.to(player.socketId).emit('game-final-results', finalScores);
+            io.to(player.socketId).emit('game-final-results', finalPayload);
           });
 
           // Sync points, badges, streak, and level to MongoDB and Redis Global Leaderboard (ZSET)

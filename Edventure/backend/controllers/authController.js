@@ -323,10 +323,21 @@ export function getLeaderboardKeys(classLevel) {
 }
 
 // Update points with Multi-ZSET leaderboard sync (Global, Weekly, and Class)
-export const updatePoints = asyncHandler(async (req, res) => {
+export const updatePoints = asyncHandler(async (req, res, next) => {
   const { points, badge } = req.body;
-  const update = { $inc: { points } };
-  if (badge) update.$addToSet = { badges: badge };
+
+  // Strict server-side boundary validation: Prevent client XP inflation
+  const cleanPoints = parseInt(points, 10);
+  if (isNaN(cleanPoints) || cleanPoints <= 0 || cleanPoints > 100) {
+    return next(new ApiError(400, 'Invalid points increment: Points awarded per activity must be between 1 and 100'));
+  }
+
+  // Whitelist allowable badge achievements
+  const ALLOWED_BADGES = ['SCHOLAR_500', 'GRANDMASTER_1500', 'FIRST_WIN', 'HOT_STREAK_3', 'ARENA_TITAN', 'QUIZ_MASTER'];
+  const update = { $inc: { points: cleanPoints } };
+  if (badge && typeof badge === 'string' && ALLOWED_BADGES.includes(badge)) {
+    update.$addToSet = { badges: badge };
+  }
 
   const updatedUser = await User.findByIdAndUpdate(req.user._id, update, { new: true });
 

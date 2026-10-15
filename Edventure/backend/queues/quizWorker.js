@@ -94,6 +94,12 @@ export function initQuizWorker(io) {
       // Store questions with gameId key for API retrieval
       await redis.setex(`game:${gameId}:questions`, 7200, JSON.stringify(questions));
 
+      // Sanitize questions: strip correctAnswer and explanation so clients cannot inspect answer keys in DevTools
+      const sanitizedQuestions = questions.map((q) => {
+        const { correctAnswer, explanation, ...clientSafeQ } = q;
+        return clientSafeQ;
+      });
+
       // Emit game-start to both players via Socket.io Redis adapter
       if (io && players && Array.isArray(players)) {
         players.forEach((player) => {
@@ -105,7 +111,7 @@ export function initQuizWorker(io) {
               subject,
               difficulty,
               classLevel,
-              questions
+              questions: sanitizedQuestions
             });
           }
         });

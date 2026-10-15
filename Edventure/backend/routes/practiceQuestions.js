@@ -21,7 +21,7 @@ router.get('/random', getRandomPracticeQuiz);
 router.post('/mistakes/record', verifyJWT, recordUserMistake);
 router.get('/mistakes/list', verifyJWT, getUserMistakes);
 router.get('/mistakes/quiz', verifyJWT, getMistakesPracticeQuiz);
-router.post('/mistakes/explain', explainMistakeWithAI);
+router.post('/mistakes/explain', verifyJWT, explainMistakeWithAI);
 
 // Get single question by ID
 router.get('/:id', getPracticeQuestionById);
